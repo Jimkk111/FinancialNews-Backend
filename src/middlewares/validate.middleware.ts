@@ -36,10 +36,10 @@ export function validate(schema: ZodSchema): RequestHandler {
         req.body = parsedData.body
       }
       if (parsedData.query) {
-        req.query = parsedData.query as typeof req.query
+        Object.assign(req.query, parsedData.query)
       }
       if (parsedData.params) {
-        req.params = parsedData.params
+        Object.assign(req.params, parsedData.params)
       }
 
       next()
@@ -93,7 +93,7 @@ export function validateQuery(schema: ZodSchema): RequestHandler {
         return
       }
 
-      req.query = result.data as typeof req.query
+      Object.assign(req.query, result.data)
       next()
     } catch (error) {
       next(error)
@@ -119,7 +119,7 @@ export function validateParams(schema: ZodSchema): RequestHandler {
         return
       }
 
-      req.params = result.data as typeof req.params
+      Object.assign(req.params, result.data)
       next()
     } catch (error) {
       next(error)

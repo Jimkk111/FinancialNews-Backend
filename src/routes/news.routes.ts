@@ -1,29 +1,36 @@
 import { Router } from 'express'
+import * as newsController from '../controllers/news.controller'
+import { validateQuery, validateParams } from '../middlewares/validate.middleware'
+import { newsListQuerySchema, newsIdParamsSchema, searchQuerySchema } from '../validators/news.validator'
 
 const router = Router()
 
-router.get('/', (_req, res) => {
-  res.json({ success: true, message: '获取新闻列表接口待实现' })
-})
+router.get('/',
+  validateQuery(newsListQuerySchema),
+  newsController.getNewsList
+)
 
-router.get('/categories', (_req, res) => {
-  res.json({ success: true, message: '获取分类列表接口待实现' })
-})
+router.get('/categories',
+  newsController.getCategories
+)
 
-router.get('/tags', (_req, res) => {
-  res.json({ success: true, message: '获取标签列表接口待实现' })
-})
+router.get('/tags',
+  newsController.getTags
+)
 
-router.get('/search', (_req, res) => {
-  res.json({ success: true, message: '搜索新闻接口待实现' })
-})
+router.get('/search',
+  validateQuery(searchQuerySchema),
+  newsController.searchNews
+)
 
-router.get('/:id', (_req, res) => {
-  res.json({ success: true, message: '获取新闻详情接口待实现' })
-})
+router.get('/:id',
+  validateParams(newsIdParamsSchema),
+  newsController.getNewsById
+)
 
-router.post('/:id/views', (_req, res) => {
-  res.json({ success: true, message: '增加浏览量接口待实现' })
-})
+router.post('/:id/views',
+  validateParams(newsIdParamsSchema),
+  newsController.incrementViews
+)
 
 export default router
