@@ -8,7 +8,7 @@ import { FavoriteListQuery, AddFavoriteBody, NewsIdParams } from '../validators/
 export async function getFavoriteList(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user!.userId
-    const query = req.query as FavoriteListQuery
+    const query = req.query as unknown as FavoriteListQuery
     const page = query.page ?? 1
     const pageSize = query.pageSize ?? 10
 
