@@ -1,17 +1,25 @@
 import { Router } from 'express'
+import { authenticate } from '../middlewares/auth.middleware'
+import { validateBody, validateQuery } from '../middlewares/validate.middleware'
+import { historyListQuerySchema, addHistorySchema } from '../validators/history.validator'
+import * as historyController from '../controllers/history.controller'
 
 const router = Router()
 
-router.get('/', (_req, res) => {
-  res.json({ success: true, message: '获取浏览历史接口待实现' })
-})
+router.use(authenticate)
 
-router.post('/', (_req, res) => {
-  res.json({ success: true, message: '添加浏览记录接口待实现' })
-})
+router.get('/',
+  validateQuery(historyListQuerySchema),
+  historyController.getHistoryList
+)
 
-router.delete('/', (_req, res) => {
-  res.json({ success: true, message: '清空历史接口待实现' })
-})
+router.post('/',
+  validateBody(addHistorySchema),
+  historyController.addHistory
+)
+
+router.delete('/',
+  historyController.clearHistory
+)
 
 export default router

@@ -1,21 +1,35 @@
 import { Router } from 'express'
+import { authenticate } from '../middlewares/auth.middleware'
+import { validateBody, validateQuery, validateParams } from '../middlewares/validate.middleware'
+import {
+  favoriteListQuerySchema,
+  addFavoriteSchema,
+  newsIdParamsSchema
+} from '../validators/favorite.validator'
+import * as favoriteController from '../controllers/favorite.controller'
 
 const router = Router()
 
-router.get('/', (_req, res) => {
-  res.json({ success: true, message: '获取收藏列表接口待实现' })
-})
+router.use(authenticate)
 
-router.post('/', (_req, res) => {
-  res.json({ success: true, message: '添加收藏接口待实现' })
-})
+router.get('/',
+  validateQuery(favoriteListQuerySchema),
+  favoriteController.getFavoriteList
+)
 
-router.delete('/:newsId', (_req, res) => {
-  res.json({ success: true, message: '取消收藏接口待实现' })
-})
+router.post('/',
+  validateBody(addFavoriteSchema),
+  favoriteController.addFavorite
+)
 
-router.get('/check/:newsId', (_req, res) => {
-  res.json({ success: true, message: '检查收藏状态接口待实现' })
-})
+router.delete('/:newsId',
+  validateParams(newsIdParamsSchema),
+  favoriteController.removeFavorite
+)
+
+router.get('/check/:newsId',
+  validateParams(newsIdParamsSchema),
+  favoriteController.checkFavorite
+)
 
 export default router
