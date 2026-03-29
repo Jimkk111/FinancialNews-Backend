@@ -69,18 +69,6 @@ export class RateLimitError extends AppError {
   }
 }
 
-export interface JwtPayload {
-  userId: number
-  uid: string
-  username: string
-  iat?: number
-  exp?: number
-}
-
-export interface AuthRequest extends Express.Request {
-  user?: JwtPayload
-}
-
 export interface ValidationResult {
   success: boolean
   data?: unknown
