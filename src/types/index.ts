@@ -57,6 +57,12 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class BadRequestError extends AppError {
+  constructor(message: string = '请求参数错误') {
+    super(message, ErrorCode.BAD_REQUEST, 400)
+  }
+}
+
 export class DuplicateError extends AppError {
   constructor(message: string = '资源已存在') {
     super(message, ErrorCode.DUPLICATE_ENTRY, 409)

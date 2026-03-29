@@ -1,29 +1,45 @@
 import { Router } from 'express'
+import { authenticate } from '../middlewares/auth.middleware'
+import { validateBody, validateParams } from '../middlewares/validate.middleware'
+import {
+  draftIdParamsSchema,
+  createDraftSchema,
+  updateDraftSchema
+} from '../validators/draft.validator'
+import * as draftController from '../controllers/draft.controller'
 
 const router = Router()
 
-router.get('/', (_req, res) => {
-  res.json({ success: true, message: '获取草稿列表接口待实现' })
-})
+router.use(authenticate)
 
-router.post('/', (_req, res) => {
-  res.json({ success: true, message: '创建草稿接口待实现' })
-})
+router.get('/',
+  draftController.getDraftList
+)
 
-router.get('/:id', (_req, res) => {
-  res.json({ success: true, message: '获取草稿详情接口待实现' })
-})
+router.post('/',
+  validateBody(createDraftSchema),
+  draftController.createDraft
+)
 
-router.put('/:id', (_req, res) => {
-  res.json({ success: true, message: '更新草稿接口待实现' })
-})
+router.get('/:id',
+  validateParams(draftIdParamsSchema),
+  draftController.getDraftById
+)
 
-router.delete('/:id', (_req, res) => {
-  res.json({ success: true, message: '删除草稿接口待实现' })
-})
+router.put('/:id',
+  validateParams(draftIdParamsSchema),
+  validateBody(updateDraftSchema),
+  draftController.updateDraft
+)
 
-router.post('/:id/publish', (_req, res) => {
-  res.json({ success: true, message: '发布草稿接口待实现' })
-})
+router.delete('/:id',
+  validateParams(draftIdParamsSchema),
+  draftController.deleteDraft
+)
+
+router.post('/:id/publish',
+  validateParams(draftIdParamsSchema),
+  draftController.publishDraft
+)
 
 export default router
