@@ -4,9 +4,12 @@ import cors from 'cors'
 import compression from 'compression'
 import morgan from 'morgan'
 import dotenv from 'dotenv'
+import path from 'path'
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware'
+import { generalLimiter } from './middlewares/rateLimit.middleware'
 import routes from './routes'
 import { log } from './utils/logger'
+import { warmup } from './services/cache.service'
 
 dotenv.config()
 
@@ -41,6 +44,9 @@ app.use((req, res, next) => {
   next()
 })
 
+const uploadDir = process.env.UPLOAD_DIR || 'uploads'
+app.use('/uploads', express.static(path.join(process.cwd(), uploadDir)))
+
 app.get('/health', (_req, res) => {
   res.json({
     success: true,
@@ -52,10 +58,14 @@ app.get('/health', (_req, res) => {
   })
 })
 
-app.use('/api', routes)
+app.use('/api', generalLimiter, routes)
 
 app.use(notFoundHandler)
 
 app.use(errorHandler)
+
+warmup().catch((err) => {
+  log.error('App', '缓存预热失败', err)
+})
 
 export default app

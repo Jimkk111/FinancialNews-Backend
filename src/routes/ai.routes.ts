@@ -3,6 +3,7 @@ import * as aiController from '../controllers/ai.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { validateBody, validateParams } from '../middlewares/validate.middleware'
 import { updateSessionSchema, chatSchema, sessionIdParamSchema } from '../validators/ai.validator'
+import { aiLimiter } from '../middlewares/rateLimit.middleware'
 
 const router = Router()
 
@@ -32,7 +33,7 @@ router.delete(
   aiController.deleteSession
 )
 
-router.post('/chat', authenticate, validateBody(chatSchema), aiController.chat)
+router.post('/chat', authenticate, aiLimiter, validateBody(chatSchema), aiController.chat)
 
 router.get('/health', aiController.healthCheck)
 

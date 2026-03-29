@@ -1,3 +1,6 @@
+---
+alwaysApply: false
+---
 # 项目规则 - 财经新闻后端API
 
 ## 1. 架构规范

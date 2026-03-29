@@ -1,5 +1,7 @@
 import prisma from '../config/database'
 import { log } from '../utils/logger'
+import * as cacheService from './cache.service'
+import { buildListCacheKey } from '../utils/cacheWrapper'
 
 export interface NewsListOptions {
   page: number
@@ -69,8 +71,24 @@ export interface SearchResult {
   keyword: string
 }
 
+const CACHE_TTL = {
+  DETAIL: 600,
+  LIST: 300,
+  CATEGORIES: 3600,
+  TAGS: 3600
+}
+
 export async function getNewsList(options: NewsListOptions): Promise<NewsListResult> {
   const { page, pageSize, categoryId, sort } = options
+
+  const cacheKey = buildListCacheKey('news', { page, pageSize, categoryId: categoryId || 'all', sort: sort || 'newest' })
+  
+  const cached = await cacheService.get<NewsListResult>(cacheKey)
+  if (cached) {
+    log.debug('NewsService', '新闻列表缓存命中', { cacheKey })
+    return cached
+  }
+
   const skip = (page - 1) * pageSize
 
   const where = {
@@ -123,12 +141,24 @@ export async function getNewsList(options: NewsListOptions): Promise<NewsListRes
     tags: item.newsTags.map((nt) => nt.tag)
   }))
 
+  const result: NewsListResult = { data, total, page, pageSize }
+
+  await cacheService.set(cacheKey, result, CACHE_TTL.LIST)
+
   log.info('NewsService', '获取新闻列表', { page, pageSize, categoryId, sort, total })
 
-  return { data, total, page, pageSize }
+  return result
 }
 
 export async function getNewsById(id: number): Promise<NewsDetail | null> {
+  const cacheKey = `news:detail:${id}`
+  
+  const cached = await cacheService.get<NewsDetail>(cacheKey)
+  if (cached) {
+    log.debug('NewsService', '新闻详情缓存命中', { cacheKey })
+    return cached
+  }
+
   const news = await prisma.news.findFirst({
     where: {
       id,
@@ -178,6 +208,8 @@ export async function getNewsById(id: number): Promise<NewsDetail | null> {
     createdAt: news.createdAt
   }
 
+  await cacheService.set(cacheKey, result, CACHE_TTL.DETAIL)
+
   log.info('NewsService', '获取新闻详情', { id })
 
   return result
@@ -200,16 +232,28 @@ export async function incrementViews(id: number): Promise<{ id: number; views: n
     select: { id: true, views: true }
   })
 
+  await cacheService.del(`news:detail:${id}`)
+
   log.info('NewsService', '增加浏览量', { id, views: updated.views })
 
   return updated
 }
 
 export async function getCategories(): Promise<Category[]> {
+  const cacheKey = 'news:categories'
+  
+  const cached = await cacheService.get<Category[]>(cacheKey)
+  if (cached) {
+    log.debug('NewsService', '分类列表缓存命中', { cacheKey })
+    return cached
+  }
+
   const categories = await prisma.category.findMany({
     select: { id: true, name: true },
     orderBy: { id: 'asc' }
   })
+
+  await cacheService.set(cacheKey, categories, CACHE_TTL.CATEGORIES)
 
   log.info('NewsService', '获取分类列表', { count: categories.length })
 
@@ -217,10 +261,20 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function getTags(): Promise<Tag[]> {
+  const cacheKey = 'news:tags'
+  
+  const cached = await cacheService.get<Tag[]>(cacheKey)
+  if (cached) {
+    log.debug('NewsService', '标签列表缓存命中', { cacheKey })
+    return cached
+  }
+
   const tags = await prisma.tag.findMany({
     select: { id: true, name: true },
     orderBy: { id: 'asc' }
   })
+
+  await cacheService.set(cacheKey, tags, CACHE_TTL.TAGS)
 
   log.info('NewsService', '获取标签列表', { count: tags.length })
 
@@ -287,11 +341,32 @@ export async function searchNews(options: SearchOptions): Promise<SearchResult> 
   return { data, total, page, pageSize, keyword }
 }
 
+export async function invalidateNewsCache(id?: number): Promise<void> {
+  if (id) {
+    await cacheService.del(`news:detail:${id}`)
+  }
+  await cacheService.delPattern('news:list:*')
+  log.info('NewsService', '新闻缓存已失效', { id })
+}
+
+export async function invalidateCategoryCache(): Promise<void> {
+  await cacheService.del('news:categories')
+  log.info('NewsService', '分类缓存已失效')
+}
+
+export async function invalidateTagCache(): Promise<void> {
+  await cacheService.del('news:tags')
+  log.info('NewsService', '标签缓存已失效')
+}
+
 export default {
   getNewsList,
   getNewsById,
   incrementViews,
   getCategories,
   getTags,
-  searchNews
+  searchNews,
+  invalidateNewsCache,
+  invalidateCategoryCache,
+  invalidateTagCache
 }

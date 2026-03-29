@@ -2,6 +2,7 @@ import { Router } from 'express'
 import * as newsController from '../controllers/news.controller'
 import { validateQuery, validateParams } from '../middlewares/validate.middleware'
 import { newsListQuerySchema, newsIdParamsSchema, searchQuerySchema } from '../validators/news.validator'
+import { searchLimiter } from '../middlewares/rateLimit.middleware'
 
 const router = Router()
 
@@ -19,6 +20,7 @@ router.get('/tags',
 )
 
 router.get('/search',
+  searchLimiter,
   validateQuery(searchQuerySchema),
   newsController.searchNews
 )
