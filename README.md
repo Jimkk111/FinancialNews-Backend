@@ -1,4 +1,4 @@
-# 财经新闻后端服务
+# 财经智讯后端服务
 
 基于 Node.js + Express + TypeScript 的财经新闻平台后端 API 服务。
 
