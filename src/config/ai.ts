@@ -10,10 +10,20 @@ interface AIConfig {
 
 function getAIConfig(): AIConfig {
   const apiKey = process.env.AI_API_KEY || ''
-  const baseUrl = process.env.AI_API_BASE_URL || 'https://api.openai.com/v1'
   const model = process.env.AI_MODEL || 'gpt-3.5-turbo'
   const maxTokens = parseInt(process.env.AI_MAX_TOKENS || '2000', 10)
   const temperature = parseFloat(process.env.AI_TEMPERATURE || '0.7')
+
+  const customUrl = process.env.AI_API_URL || process.env.AI_API_BASE_URL
+  let baseUrl = 'https://api.openai.com/v1'
+  
+  if (customUrl) {
+    if (customUrl.includes('/chat/completions')) {
+      baseUrl = customUrl.replace(/\/chat\/completions$/, '')
+    } else {
+      baseUrl = customUrl.replace(/\/$/, '')
+    }
+  }
 
   if (!apiKey) {
     log.warn('AIConfig', 'AI_API_KEY未配置，AI功能将不可用')

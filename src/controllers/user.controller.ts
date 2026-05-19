@@ -3,6 +3,7 @@ import prisma from '../config/database'
 import { success, error } from '../utils/response'
 import { log } from '../utils/logger'
 import { saveFile, cleanOldFile } from '../services/file.service'
+import * as newsService from '../services/news.service'
 
 export interface UserInfo {
   uid: string
@@ -200,8 +201,47 @@ export async function uploadAvatar(
   }
 }
 
+export async function getUserNews(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const userId = req.user?.userId
+
+    if (!userId) {
+      error(res, 'UNAUTHORIZED', '未授权访问', 401)
+      return
+    }
+
+    const query = req.query as { page?: string; pageSize?: string }
+    const page = Number(query.page) || 1
+    const pageSize = Number(query.pageSize) || 10
+
+    const result = await newsService.getUserNewsList({ userId, page, pageSize })
+
+    log.info('UserController', '获取用户发布新闻列表', { userId, total: result.total })
+
+    const totalPages = Math.ceil(result.total / pageSize)
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      pagination: {
+        page: result.page,
+        pageSize: result.pageSize,
+        total: result.total,
+        totalPages
+      }
+    })
+  } catch (err) {
+    log.error('UserController', '获取用户发布新闻列表失败', undefined, err instanceof Error ? err : undefined)
+    next(err)
+  }
+}
+
 export default {
   getCurrentUser,
   updateCurrentUser,
-  uploadAvatar
+  uploadAvatar,
+  getUserNews
 }

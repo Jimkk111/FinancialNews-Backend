@@ -341,6 +341,76 @@ export async function searchNews(options: SearchOptions): Promise<SearchResult> 
   return { data, total, page, pageSize, keyword }
 }
 
+export interface UserNewsListOptions {
+  userId: number
+  page: number
+  pageSize: number
+}
+
+export interface UserNewsListResult {
+  data: NewsListItem[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export async function getUserNewsList(options: UserNewsListOptions): Promise<UserNewsListResult> {
+  const { userId, page, pageSize } = options
+  const skip = (page - 1) * pageSize
+
+  const where = {
+    userId,
+    deletedAt: null
+  }
+
+  const [news, total] = await Promise.all([
+    prisma.news.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { publishTime: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        summary: true,
+        publishTime: true,
+        source: true,
+        views: true,
+        hasImage: true,
+        imageUrl: true,
+        categoryId: true,
+        category: {
+          select: { id: true, name: true }
+        },
+        newsTags: {
+          select: {
+            tag: { select: { id: true, name: true } }
+          }
+        }
+      }
+    }),
+    prisma.news.count({ where })
+  ])
+
+  const data: NewsListItem[] = news.map((item) => ({
+    id: item.id,
+    title: item.title,
+    summary: item.summary,
+    publishTime: item.publishTime,
+    source: item.source,
+    views: item.views,
+    hasImage: item.hasImage,
+    imageUrl: item.imageUrl,
+    categoryId: item.categoryId,
+    category: item.category,
+    tags: item.newsTags.map((nt) => nt.tag)
+  }))
+
+  log.info('NewsService', '获取用户发布新闻列表', { userId, page, pageSize, total })
+
+  return { data, total, page, pageSize }
+}
+
 export async function invalidateNewsCache(id?: number): Promise<void> {
   if (id) {
     await cacheService.del(`news:detail:${id}`)
@@ -366,6 +436,7 @@ export default {
   getCategories,
   getTags,
   searchNews,
+  getUserNewsList,
   invalidateNewsCache,
   invalidateCategoryCache,
   invalidateTagCache

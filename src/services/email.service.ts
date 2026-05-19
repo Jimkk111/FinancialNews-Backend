@@ -11,13 +11,17 @@ interface SmtpConfig {
 }
 
 function getSmtpConfig(): SmtpConfig {
+  const port = parseInt(process.env.SMTP_PORT || '587', 10)
+  const secureEnv = process.env.SMTP_SECURE === 'true'
+  const secure = secureEnv || port === 465
+
   return {
     host: process.env.SMTP_HOST || 'smtp.example.com',
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === 'true',
+    port,
+    secure,
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.SMTP_FROM || 'noreply@example.com'
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@example.com'
   }
 }
 

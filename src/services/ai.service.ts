@@ -24,6 +24,50 @@ interface ChatResponse {
   sessionId: string
 }
 
+const TITLE_MAX_LENGTH = 30
+
+async function generateSessionTitle(userMessage: string): Promise<string> {
+  if (!aiConfig.apiKey) {
+    return userMessage.substring(0, TITLE_MAX_LENGTH)
+  }
+
+  try {
+    const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${aiConfig.apiKey}`
+      },
+      body: JSON.stringify({
+        model: aiConfig.model,
+        messages: [
+          {
+            role: 'system',
+            content: '请用简短的中文标题概括以下对话主题，不超过15个字，只返回标题，不要其他内容。'
+          },
+          {
+            role: 'user',
+            content: userMessage
+          }
+        ],
+        max_tokens: 50,
+        temperature: 0.7
+      })
+    })
+
+    if (!response.ok) {
+      return userMessage.substring(0, TITLE_MAX_LENGTH)
+    }
+
+    const result = (await response.json()) as ChatCompletionResponse
+    const title = result.choices[0]?.message?.content?.trim() || userMessage.substring(0, TITLE_MAX_LENGTH)
+    
+    return title.substring(0, TITLE_MAX_LENGTH)
+  } catch {
+    return userMessage.substring(0, TITLE_MAX_LENGTH)
+  }
+}
+
 export async function getSessions(userId: number): Promise<SessionInfo[]> {
   const sessions = await prisma.aiSession.findMany({
     where: { userId },
@@ -196,12 +240,20 @@ export async function chat(userId: number, data: ChatRequest): Promise<ChatRespo
     const result = (await response.json()) as ChatCompletionResponse
     const assistantContent = result.choices[0]?.message?.content || ''
 
+    const userMessage = messagesToSend[messagesToSend.length - 1]?.content || ''
+    const shouldGenerateTitle = !session.title
+    let generatedTitle: string | null = null
+
+    if (shouldGenerateTitle) {
+      generatedTitle = await generateSessionTitle(userMessage)
+    }
+
     await prisma.$transaction([
       prisma.aiMessage.create({
         data: {
           sessionId: session.id,
           role: 'user',
-          content: messagesToSend[messagesToSend.length - 1]?.content || ''
+          content: userMessage
         }
       }),
       prisma.aiMessage.create({
@@ -213,7 +265,10 @@ export async function chat(userId: number, data: ChatRequest): Promise<ChatRespo
       }),
       prisma.aiSession.update({
         where: { id: session.id },
-        data: { updatedAt: new Date() }
+        data: {
+          updatedAt: new Date(),
+          ...(generatedTitle && { title: generatedTitle })
+        }
       })
     ])
 
@@ -228,7 +283,7 @@ export async function chat(userId: number, data: ChatRequest): Promise<ChatRespo
     if (error instanceof BadRequestError || error instanceof NotFoundError || error instanceof ForbiddenError) {
       throw error
     }
-    log.error('AIService', 'AI对话异常', { error })
+    log.error('AIService', 'AI对话异常', undefined, error instanceof Error ? error : undefined)
     throw new BadRequestError('AI服务暂时不可用')
   }
 }
@@ -298,6 +353,8 @@ export async function chatStream(
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let fullContent = ''
+    const userMessage = messagesToSend[messagesToSend.length - 1]?.content || ''
+    const shouldGenerateTitle = !session.title
 
     while (true) {
       const { done, value } = await reader.read()
@@ -323,12 +380,17 @@ export async function chatStream(
       }
     }
 
+    let generatedTitle: string | null = null
+    if (shouldGenerateTitle) {
+      generatedTitle = await generateSessionTitle(userMessage)
+    }
+
     await prisma.$transaction([
       prisma.aiMessage.create({
         data: {
           sessionId: session.id,
           role: 'user',
-          content: messagesToSend[messagesToSend.length - 1]?.content || ''
+          content: userMessage
         }
       }),
       prisma.aiMessage.create({
@@ -340,7 +402,10 @@ export async function chatStream(
       }),
       prisma.aiSession.update({
         where: { id: session.id },
-        data: { updatedAt: new Date() }
+        data: {
+          updatedAt: new Date(),
+          ...(generatedTitle && { title: generatedTitle })
+        }
       })
     ])
 
@@ -355,7 +420,7 @@ export async function chatStream(
     if (error instanceof BadRequestError || error instanceof NotFoundError || error instanceof ForbiddenError) {
       throw error
     }
-    log.error('AIService', 'AI流式对话异常', { error })
+    log.error('AIService', 'AI流式对话异常', undefined, error instanceof Error ? error : undefined)
     throw new BadRequestError('AI服务暂时不可用')
   }
 }

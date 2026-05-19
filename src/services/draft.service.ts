@@ -288,7 +288,8 @@ export async function publishDraft(userId: number, draftId: string): Promise<Pub
         views: 0,
         hasImage,
         imageUrl: draft.coverImage,
-        categoryId: draft.categoryId
+        categoryId: draft.categoryId,
+        userId: userId
       },
       select: {
         id: true,
